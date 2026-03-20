@@ -1,42 +1,24 @@
 ---
-// ====================================
-// Import
-// ====================================
-// Config
-import { SITE, COMPANY, SNS } from "../config";
+import { SITE } from "../config";
 import "@assets/css/base.reset.css";
-// Component
-import GlobalHeader from "../components/global/GlobalHeader.astro";
-import GlobalFooter from "../components/global/GlobalFooter.astro";
 
 interface Props {
   title: string;
   description: string;
-  image?: string;
 }
 
-const { title, description, image } = Astro.props;
+const { title, description } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="ja" data-script>
+<html lang="ja">
   <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-F8JBENLSX6"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-F8JBENLSX6');
-    </script>
-    <meta charset="UTF-8" />
+   <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta property="og:url" content="https://photoire.attdesign.site/" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={image ?? "https://photoire.attdesign.site/ogp.png"} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:site_name" content="Photoire|日々の写真ログ" />
@@ -51,169 +33,11 @@ const { title, description, image } = Astro.props;
     <title>{title}</title>
   </head>
   <body>
-    <div class="p-transition js-transition"></div>
-    <!-- カメラシャッター用オーバーレイ -->
-    <div id="shutter-overlay" class="shutter-overlay">
-      <svg id="shutterSvg" class="shutter-svg" viewBox="0 0 400 400">
-        <defs>
-          <clipPath id="circleClip">
-            <circle cx="200" cy="200" r="200" />
-          </clipPath>
-          <!-- ざらっとした質感（グレイン/ノイズ）フィルター -->
-          <filter id="grain" x="0%" y="0%" width="100%" height="100%">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.8"
-              numOctaves="4"
-              seed="5"
-              result="noise"
-            />
-            <feComponentTransfer in="noise" result="adjustedNoise">
-              <feFuncR type="linear" slope="0.3" intercept="0"/>
-              <feFuncG type="linear" slope="0.3" intercept="0"/>
-              <feFuncB type="linear" slope="0.3" intercept="0"/>
-            </feComponentTransfer>
-            <feComposite in="adjustedNoise" in2="SourceGraphic" operator="in" result="maskedNoise"/>
-            <feBlend in="SourceGraphic" in2="maskedNoise" mode="screen"/>
-          </filter>
-        </defs>
-        <g id="blades" clip-path="url(#circleClip)" filter="url(#grain)"></g>
-      </svg>
-    </div>
-    <div id="swup" class="transition-main">
-      <GlobalHeader />
+    <div id="swup">
       <slot />
-      <GlobalFooter />
     </div>
-    <style is:global>
-      .is-drawerActive {
-        overflow: hidden;
-      }
-      html.is-changing .transition-main {
-        visibility: hidden;
-        opacity: 0;
-        transition: all 0.5s ease-out;
-      }
-
-      html.is-rendering .transition-main {
-        visibility: visible;
-        opacity: 1;
-        transition: all 0.5s ease-out;
-      }
-
-      .p-transition {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 100;
-        width: 100%;
-        height: 100dvh;
-        visibility: hidden;
-        will-change: transform;
-      }
-      .p-transition.-is-changing {
-        visibility: visible;
-      }
-
-      .p-transition.-is-animating:before {
-        transition: transform 1.5s cubic-bezier(0.39, 0.575, 0.565, 1);
-        transform: translate3d(-66.66%, 0, 0);
-      }
-
-      .p-transition.-is-rendering:before {
-        transition: transform 1.5s cubic-bezier(0.39, 0.575, 0.565, 1);
-        transition-delay: 0.1s;
-        transform: translate3d(-134%, 0, 0);
-      }
-
-      .p-transition:before {
-        position: absolute;
-        top: 0;
-        left: 0%;
-        width: 300%;
-        height: 100%;
-        content: "";
-        background: linear-gradient(to right, #fff0, #fff, #fff, #fff0);
-      }
-
-      /* 写真フライアウト用オーバーレイ */
-      .photo-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 50;
-        pointer-events: none;
-        opacity: 0;
-      }
-      .photo-overlay.-is-active {
-        opacity: 1;
-      }
-      .photo-overlay__img {
-        position: absolute;
-        object-fit: cover;
-        will-change: transform;
-      }
-      .photo-overlay__img.-is-animating {
-        transition: all 2s cubic-bezier(0.25, 0.1, 0.25, 1);
-      }
-
-      /* イントロアニメーション用オーバーレイ */
-      .intro-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 60;
-        pointer-events: none;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: #fff;
-      }
-      .intro-overlay.-is-hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      .intro-overlay__img {
-        position: absolute;
-        width: 35vmin;
-        height: 35vmin;
-        object-fit: cover;
-        opacity: 0;
-        will-change: transform, opacity;
-        box-shadow: 0 4px 5px rgba(0, 0, 0, 0.09);
-      }
-
-      /* カメラシャッター用オーバーレイ */
-      .shutter-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 200;
-        pointer-events: none;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        opacity: 0;
-      }
-      .shutter-overlay.-is-active {
-        opacity: 1;
-      }
-      .shutter-svg {
-        width: 20vmax;
-        height: 20vmax;
-      }
-
-    </style>
   </body>
 </html>
 <script>
-	import swupFunc from "@assets/js/libs/Swup"
-	swupFunc();
+import "../assets/js/app"
 </script>
