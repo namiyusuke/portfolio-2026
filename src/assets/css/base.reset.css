@@ -637,4 +637,13 @@ a {
 #maincanvas {
   position: fixed;
   inset: 0;
+  width: 70%;
+  aspect-ratio: 960 / 556;
+  margin: auto;
+}
+.home-frame {
+  position: fixed;
+  inset: 0;
+  width: 80%;
+  margin: auto;
 }

@@ -11,8 +11,15 @@ const swup = new Swup({
 
 let scene = await initThreeScene();
 
-// 離脱: 旧コンテンツのDOMをそのままbodyに退避
+// 離脱: 旧シーン破棄 → 旧コンテンツのDOMをそのままbodyに退避
 swup.hooks.on("animation:out:await", async () => {
+  // lil-gui等を含む旧シーンを先に破棄
+  if (scene) {
+    console.log(scene);
+    scene.destroy();
+    scene = null;
+  }
+
   const container = document.querySelector("#swup");
   const ghost = document.createElement("div");
   ghost.id = "swup-ghost";
@@ -28,8 +35,6 @@ swup.hooks.on("animation:out:await", async () => {
 // 進入: 新ページが下からスライドして被さる
 swup.hooks.on("animation:in:await", async () => {
   const container = document.querySelector("#swup");
-  const oldScene = scene;
-
   // initThreeScene 内でコンテナの有無を判定するため、常に呼ぶだけでOK
   scene = await initThreeScene();
 
@@ -50,7 +55,6 @@ swup.hooks.on("animation:in:await", async () => {
       });
   }
 
-  // 旧ループ停止 + renderer破棄 + ghost除去
-  if (oldScene) oldScene.destroy();
+  // ghost除去
   if (ghost) ghost.remove();
 });

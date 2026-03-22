@@ -136,6 +136,12 @@ export default class WorksCanvas extends BaseCanvas {
   destroy() {
     this.isReady = false;
 
+    // GUI破棄（最優先）
+    if (this.gui) {
+      this.gui.destroy();
+      this.gui = null;
+    }
+
     // CardGallery 破棄
     if (this.cardGallery) {
       this.cardGallery.destroy();
@@ -146,11 +152,6 @@ export default class WorksCanvas extends BaseCanvas {
     if (this.bgMesh) {
       this.bgMesh.geometry.dispose();
       this.bgMesh.material.dispose();
-    }
-
-    // GUI破棄
-    if (this.gui) {
-      this.gui.destroy();
     }
 
     // Renderer破棄

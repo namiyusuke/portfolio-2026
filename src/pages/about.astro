@@ -4,18 +4,12 @@ import { SITE } from '../config';
 ---
 
 <Layout title={`About | ${SITE.name}`} description={SITE.description}>
-  <main class="page-about">
-    <h1>Photo Gallery</h1>
-    <p class="subtitle">Drag or scroll to explore the infinite photo grid.</p>
-
+  <main class="page-details">
+    <h1>Photoire</h1>
     <div class="canvas-wrapper">
       <video class="details-video" src="/video/photoire-01.mp4" autoplay muted loop playsinline></video>
       <iframe class="details-iframe" src="/demos/tile-scroll/"></iframe>
     </div>
-
-    <p class="caption">12 photos · infinite scroll · WebGL</p>
-
-    <a href="/" class="back-link">← Home に戻る</a>
   </main>
 </Layout>
 

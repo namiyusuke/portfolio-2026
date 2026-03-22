@@ -17,9 +17,10 @@ export default class BaseCanvas {
     this.setConfig(options);
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(options.fov ?? Config.fov, Config.aspectRatio, 0.1, 1000);
-    this.camera.position.set(0, 0, options.cameraZ ?? Config.cameraZ);
-
+    Config.fov = options.fov ?? Config.fov;
+    Config.cameraZ = options.cameraZ ?? Config.cameraZ;
+    this.camera = new THREE.PerspectiveCamera(Config.fov, Config.aspectRatio, 0.1, 1000);
+    this.camera.position.set(0, 0, Config.cameraZ);
     const defaultRendererOpts = {
       canvas: this.container.querySelector("canvas"),
       alpha: false,
@@ -33,7 +34,6 @@ export default class BaseCanvas {
       // canvas は常にコンテナ内の要素を使う
       canvas: this.container.querySelector("canvas"),
     });
-
     if (options.clearColor !== undefined) {
       this.renderer.setClearColor(options.clearColor);
     } else {
@@ -55,7 +55,6 @@ export default class BaseCanvas {
   setConfig() {
     // canvasの親要素からサイズを取得
     const { width, height } = this.container.getBoundingClientRect();
-
     Config.dpr = Math.min(window.devicePixelRatio, 2);
     Config.width = width;
     Config.height = height;

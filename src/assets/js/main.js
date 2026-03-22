@@ -3,8 +3,8 @@
  * デモを追加する場合はここに1行足すだけでOK。
  */
 const CANVAS_MAP = [
-{ id: "CanvasContainer",  load: () => import("./AppCanvas/WorksCanvas") },
-  { id: "maincanvas",       load: () => import("./AppCanvas") },
+  { id: "CanvasContainer", load: () => import("./AppCanvas/WorksCanvas") },
+  { id: "maincanvas", load: () => import("./AppCanvas") },
 ];
 
 /**
@@ -13,12 +13,11 @@ const CANVAS_MAP = [
  * 各 Canvas クラスは動的 import で必要なページでのみ読み込まれる。
  */
 export default async function initThreeScene() {
-  const match = CANVAS_MAP.find((entry) => document.getElementById(entry.id));
+  const scope = document.querySelector("#swup") || document;
+  const match = CANVAS_MAP.find((entry) => scope.querySelector(`#${entry.id}`));
   if (!match) return null;
-
   const { default: CanvasClass } = await match.load();
   const app = new CanvasClass();
-
   let lastUpdateTime = performance.now() * 0.001;
   let rafId = null;
   const resize = {

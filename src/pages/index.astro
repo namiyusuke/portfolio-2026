@@ -1,11 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { SITE } from '../config';
+import home_frame from "../assets/img/home-frame.png"
 ---
 
 <Layout title={SITE.name} description={SITE.description}>
   <main>
-    <h1>{SITE.name}</h1>
+    <img class="home-frame" src={home_frame.src} alt="">
     <div id="maincanvas">
       <canvas></canvas>
     </div>
