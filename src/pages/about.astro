@@ -4,42 +4,103 @@ import { SITE } from '../config';
 ---
 
 <Layout title={`About | ${SITE.name}`} description={SITE.description}>
-  <main class="page-detail">
-    <h1>About</h1>
-    <p>ダミーページです。</p>
-    <a href="/works">← Works に戻る</a>
+  <main class="page-about">
+    <h1>Photo Gallery</h1>
+    <p class="subtitle">Drag or scroll to explore the infinite photo grid.</p>
+
+    <div class="canvas-wrapper">
+      <video class="details-video" src="/video/photoire-01.mp4" autoplay muted loop playsinline></video>
+      <iframe class="details-iframe" src="/demos/tile-scroll/"></iframe>
+    </div>
+
+    <p class="caption">12 photos · infinite scroll · WebGL</p>
+
+    <a href="/" class="back-link">← Home に戻る</a>
   </main>
 </Layout>
 
 <style>
-  .page-detail {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    color: #fff;
-    background: #0a0a0d;
-    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+  .details-video,
+  .details-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
   }
+
+  .details-video {
+    opacity: 0;
+    visibility: hidden;
+    object-fit: cover;
+    animation: fade-in 0.8s 5s forwards;
+  }
+
+  .details-iframe {
+    animation: fade-out 0.8s 5s forwards;
+  }
+
+  @keyframes fade-in {
+    to { opacity: 1; visibility: visible; }
+  }
+
+  @keyframes fade-out {
+    to { opacity: 0; visibility: hidden; }
+  }
+  .page-about {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 40px;
+    min-height: 100vh;
+    background: #f5f5f4;
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    color: #1a1a1a;
+  }
+
   h1 {
     font-family: 'Kaisei Opti', serif;
-    font-size: clamp(2rem, 5vw, 4rem);
-    margin-bottom: 0.5em;
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
   }
-  p {
-    font-size: 1rem;
-    opacity: 0.6;
-    margin-bottom: 2em;
+
+  .subtitle {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.4);
+    margin-bottom: 32px;
+    line-height: 1.6;
   }
-  a {
-    color: rgba(255,255,255,0.5);
+
+  .canvas-wrapper {
+    width: calc(1040 / 1440 * 100%);
+    aspect-ratio: 1040 / 693;
+    margin-inline: auto;
+    position: relative;
+  }
+
+  .canvas-wrapper iframe {
+    border: none;
+  }
+
+  .caption {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.3);
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 32px;
+    color: rgba(0, 0, 0, 0.5);
     text-decoration: none;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
     transition: color 0.2s;
   }
-  a:hover {
-    color: #fff;
+
+  .back-link:hover {
+    color: #1a1a1a;
   }
 </style>

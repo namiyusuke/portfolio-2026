@@ -165,9 +165,9 @@ export default class CardGallery {
     // DOM要素
     this.cursorEl = document.querySelector(".cursor");
     this.projectLabelEl = document.getElementById("project-label");
-    this.projectTitleEl = this.projectLabelEl.querySelector(".title");
-    this.projectCategoryEl = this.projectLabelEl.querySelector(".category");
-    this.projectLinkEl = this.projectLabelEl.querySelector(".link");
+    this.projectTitleEl = this.projectLabelEl?.querySelector(".title") ?? null;
+    this.projectCategoryEl = this.projectLabelEl?.querySelector(".category") ?? null;
+    this.projectLinkEl = this.projectLabelEl?.querySelector(".link") ?? null;
     // geometry（共有）
     const cardWidth = 2 * CFG.radius * Math.sin(CFG.arcAngle / 2);
     const sharedGeo = new THREE.PlaneGeometry(cardWidth, CFG.cardHeight, CFG.segmentsX, CFG.segmentsY);
@@ -376,16 +376,20 @@ export default class CardGallery {
       const proj = closestCard.userData.project;
       if (proj !== this.currentCenterProject) {
         this.currentCenterProject = proj;
-        this.projectTitleEl.innerHTML = [...proj.title]
-          .map((ch, i) => `<span style="animation-delay:${i * 0.04}s">${ch === " " ? "&nbsp;" : ch}</span>`)
-          .join("");
-        this.projectCategoryEl.textContent = proj.category;
-        this.projectLinkEl.setAttribute("href", proj.link);
+        if (this.projectTitleEl) {
+          this.projectTitleEl.innerHTML = [...proj.title]
+            .map((ch, i) => `<span style="animation-delay:${i * 0.04}s">${ch === " " ? "&nbsp;" : ch}</span>`)
+            .join("");
+        }
+        if (this.projectCategoryEl) this.projectCategoryEl.textContent = proj.category;
+        if (this.projectLinkEl) this.projectLinkEl.setAttribute("href", proj.link);
       }
-      this.projectLabelEl.style.opacity = 1;
-      this.projectLabelEl.classList.add("visible");
+      if (this.projectLabelEl) {
+        this.projectLabelEl.style.opacity = 1;
+        this.projectLabelEl.classList.add("visible");
+      }
     } else {
-      this.projectLabelEl.classList.remove("visible");
+      if (this.projectLabelEl) this.projectLabelEl.classList.remove("visible");
       this.currentCenterProject = null;
     }
   }

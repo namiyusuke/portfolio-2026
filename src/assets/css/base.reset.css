@@ -589,7 +589,7 @@
 body {
   font-family: var(--ff-jp);
   font-weight: 400;
-  overflow: clip;
+  /* overflow: clip; */
 }
 
 #CanvasContainer {
@@ -633,4 +633,8 @@ a {
 }
 .link:hover {
   transform: scale(1.4);
+}
+#maincanvas {
+  position: fixed;
+  inset: 0;
 }

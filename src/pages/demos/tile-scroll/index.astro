@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Infinite Tile Scroll</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<canvas id="tileCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var BASE_REPEAT = 3;
+  var TILE_SIZE = 512;
+  var COLS = 4;
+  var ROWS = 3;
+  var IMAGE_COUNT = COLS * ROWS;
+  var FRICTION = 0.95;
+  var AUTO_SCROLL = 0.0025;
+
+  var ids = [
+    "1506744038136-46273834b3fb",
+    "1470071459604-3b5ec3a7fe05",
+    "1441974231531-c6227db76b6e",
+    "1518173946687-a1e7e7bddab2",
+    "1507525428034-b723cf961d3e",
+    "1501785888041-af3ef285b470",
+    "1472214103451-9374bd1c798e",
+    "1433086966358-54859d0ed716",
+    "1465146344425-f00d5f5c8f07",
+    "1484591974057-265bb767ef71",
+    "1470252649378-9c29740c9fa8",
+    "1542202229-7d93c33f5d07"
+  ];
+  var IMAGES = ids.map(function (id) {
+    return "https://images.unsplash.com/photo-" + id + "?w=512&h=512&fit=crop&q=80";
+  });
+
+  var vertSrc = [
+    "varying vec2 v_uv;",
+    "void main() {",
+    "  v_uv = uv;",
+    "  gl_Position = vec4(position, 1.0);",
+    "}"
+  ].join("\n");
+
+  var fragSrc = [
+    "precision highp float;",
+    "varying vec2 v_uv;",
+    "uniform sampler2D u_texture;",
+    "uniform vec2 u_offset;",
+    "uniform vec2 u_repeat;",
+    "uniform vec2 u_resolution;",
+    "uniform float u_gap;",
+    "uniform float u_depth;",
+    "uniform float u_imageCount;",
+    "uniform float u_atlasCols;",
+    "uniform float u_atlasRows;",
+    "uniform float u_tileStride;",
+    "",
+    "void main() {",
+    "  vec2 centered = v_uv - 0.5;",
+    "  float dist = length(centered);",
+    "  float depthStr = u_depth * 0.3;",
+    "  vec2 warp = centered * (1.0 - depthStr * dist * 2.0);",
+    "  vec2 uv = (warp + 0.5) * u_repeat + u_offset;",
+    "",
+    "  vec2 tileIdx = floor(uv);",
+    "  vec2 tileUV = fract(uv);",
+    "",
+    "  vec2 tileSize = u_resolution / u_repeat;",
+    "  float baseGap = 2.0 / min(tileSize.x, tileSize.y);",
+    "  float dynGap = u_gap * 0.09;",
+    "  float gap = baseGap + dynGap;",
+    "  vec2 scaled = (tileUV - 0.5) / (1.0 - gap * 2.0) + 0.5;",
+    "",
+    "  if (scaled.x < 0.0 || scaled.x > 1.0 || scaled.y < 0.0 || scaled.y > 1.0) {",
+    "    gl_FragColor = vec4(0.96, 0.96, 0.95, 1.0);",
+    "    return;",
+    "  }",
+    "",
+    "  float idx = mod(tileIdx.x + tileIdx.y * u_tileStride, u_imageCount);",
+    "  idx = mod(idx + u_imageCount, u_imageCount);",
+    "  float col = mod(idx, u_atlasCols);",
+    "  float row = floor(idx / u_atlasCols);",
+    "",
+    "  vec2 atlasUV = vec2(",
+    "    (col + scaled.x) / u_atlasCols,",
+    "    ((u_atlasRows - 1.0 - row) + scaled.y) / u_atlasRows",
+    "  );",
+    "",
+    "  vec4 color = texture2D(u_texture, atlasUV);",
+    "  color.rgb *= 1.0 - u_depth * 0.15;",
+    "  gl_FragColor = color;",
+    "}"
+  ].join("\n");
+
+  function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return a; }
+  function computeStride(n) {
+    if (n <= 1) return 1;
+    var target = Math.max(7, Math.ceil(n / 3));
+    for (var m = target; m < n * 2; m++) {
+      if (gcd(m, n) === 1) return m;
+    }
+    return target;
+  }
+
+  var canvas = document.getElementById("tileCanvas");
+  var w = window.innerWidth, h = window.innerHeight;
+
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.z = 1;
+
+  var stride = computeStride(IMAGE_COUNT);
+
+  var material = new THREE.ShaderMaterial({
+    uniforms: {
+      u_texture: { value: null },
+      u_offset: { value: new THREE.Vector2(0, 0) },
+      u_repeat: { value: new THREE.Vector2(BASE_REPEAT, BASE_REPEAT) },
+      u_resolution: { value: new THREE.Vector2(w, h) },
+      u_gap: { value: 0 },
+      u_depth: { value: 0 },
+      u_imageCount: { value: IMAGE_COUNT },
+      u_atlasCols: { value: COLS },
+      u_atlasRows: { value: ROWS },
+      u_tileStride: { value: stride }
+    },
+    vertexShader: vertSrc,
+    fragmentShader: fragSrc
+  });
+
+  var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  scene.add(mesh);
+
+  var offset = { x: 0, y: 0 };
+  var velocity = { x: 0, y: 0 };
+  var isDragging = false;
+  var lastPos = { x: 0, y: 0 };
+  var currentGap = 0;
+  var currentDepth = 0;
+
+  function updateAspect(w, h) {
+    var a = w / h;
+    if (a > 1) material.uniforms.u_repeat.value.set(BASE_REPEAT * a, BASE_REPEAT);
+    else material.uniforms.u_repeat.value.set(BASE_REPEAT, BASE_REPEAT / a);
+  }
+  updateAspect(w, h);
+
+  window.addEventListener("resize", function () {
+    w = window.innerWidth; h = window.innerHeight;
+    renderer.setSize(w, h);
+    material.uniforms.u_resolution.value.set(w, h);
+    updateAspect(w, h);
+  });
+
+  var loaded = 0;
+  var imgs = [];
+  IMAGES.forEach(function (src, i) {
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () { imgs[i] = img; check(); };
+    img.onerror = function () {
+      var c = document.createElement("canvas");
+      c.width = c.height = TILE_SIZE;
+      var ctx = c.getContext("2d");
+      ctx.fillStyle = "hsl(" + (Math.random() * 360) + ",50%,70%)";
+      ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+      imgs[i] = c;
+      check();
+    };
+    img.src = src;
+  });
+
+  function check() {
+    loaded++;
+    if (loaded < IMAGE_COUNT) return;
+    buildAtlas();
+  }
+
+  function buildAtlas() {
+    var aw = COLS * TILE_SIZE, ah = ROWS * TILE_SIZE;
+    var c = document.createElement("canvas");
+    c.width = aw; c.height = ah;
+    var ctx = c.getContext("2d");
+    ctx.fillStyle = "#f5f5f4";
+    ctx.fillRect(0, 0, aw, ah);
+
+    imgs.forEach(function (img, i) {
+      var col = i % COLS, row = Math.floor(i / COLS);
+      var x = col * TILE_SIZE, y = row * TILE_SIZE;
+      var ia = img.width / img.height;
+      var dw, dh, dx, dy;
+      if (ia > 1) { dh = TILE_SIZE; dw = TILE_SIZE * ia; dx = x - (dw - TILE_SIZE) / 2; dy = y; }
+      else { dw = TILE_SIZE; dh = TILE_SIZE / ia; dx = x; dy = y - (dh - TILE_SIZE) / 2; }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, TILE_SIZE, TILE_SIZE);
+      ctx.clip();
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+    });
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    material.uniforms.u_texture.value = tex;
+  }
+
+  canvas.addEventListener("mousedown", function (e) {
+    isDragging = true;
+    lastPos.x = e.clientX; lastPos.y = e.clientY;
+    velocity.x = 0; velocity.y = 0;
+  });
+  window.addEventListener("mousemove", function (e) {
+    if (!isDragging) return;
+    var dx = e.clientX - lastPos.x;
+    var dy = e.clientY - lastPos.y;
+    velocity.x = dx * 0.002;
+    velocity.y = -dy * 0.002;
+    offset.x += velocity.x;
+    offset.y += velocity.y;
+    lastPos.x = e.clientX; lastPos.y = e.clientY;
+  });
+  window.addEventListener("mouseup", function () { isDragging = false; });
+
+  canvas.addEventListener("touchstart", function (e) {
+    e.preventDefault();
+    isDragging = true;
+    var pt = e.touches[0];
+    lastPos.x = pt.clientX; lastPos.y = pt.clientY;
+    velocity.x = 0; velocity.y = 0;
+  }, { passive: false });
+  canvas.addEventListener("touchmove", function (e) {
+    e.preventDefault();
+    if (!isDragging) return;
+    var pt = e.touches[0];
+    var dx = pt.clientX - lastPos.x;
+    var dy = pt.clientY - lastPos.y;
+    velocity.x = dx * 0.002;
+    velocity.y = -dy * 0.002;
+    offset.x += velocity.x;
+    offset.y += velocity.y;
+    lastPos.x = pt.clientX; lastPos.y = pt.clientY;
+  }, { passive: false });
+  canvas.addEventListener("touchend", function () { isDragging = false; });
+
+  canvas.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    velocity.x += e.deltaX * 0.0003;
+    velocity.y -= e.deltaY * 0.0003;
+  }, { passive: false });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    offset.x += AUTO_SCROLL;
+    if (!isDragging) {
+      offset.x += velocity.x;
+      offset.y += velocity.y;
+      velocity.x *= FRICTION;
+      velocity.y *= FRICTION;
+    }
+    var speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    currentGap += (Math.min(speed * 20, 1) - currentGap) * 0.1;
+    currentDepth += (Math.min(speed * 15, 1) - currentDepth) * 0.08;
+    material.uniforms.u_offset.value.set(offset.x, offset.y);
+    material.uniforms.u_gap.value = currentGap;
+    material.uniforms.u_depth.value = currentDepth;
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>

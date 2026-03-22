@@ -13,16 +13,11 @@ export default class BaseCanvas {
    */
   constructor(options = {}) {
     // canvasの親要素を取得
-    this.container = document.getElementById(options.containerId || "CanvasContainer");
+    this.container = document.getElementById(options.containerId || "maincanvas");
     this.setConfig(options);
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(
-      options.fov ?? Config.fov,
-      Config.aspectRatio,
-      0.1,
-      1000,
-    );
+    this.camera = new THREE.PerspectiveCamera(options.fov ?? Config.fov, Config.aspectRatio, 0.1, 1000);
     this.camera.position.set(0, 0, options.cameraZ ?? Config.cameraZ);
 
     const defaultRendererOpts = {

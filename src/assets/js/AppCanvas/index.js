@@ -32,4 +32,14 @@ export default class AppCanvas extends BaseCanvas {
     this.mainObject.update({ time, deltaTime });
     this.renderer.render(this.scene, this.camera);
   }
+
+  destroy() {
+    this.isReady = false;
+    if (this.mainObject) {
+      this.mainObject.mesh.geometry.dispose();
+      this.mainObject.mesh.material.dispose();
+      this.scene.remove(this.mainObject.mesh);
+    }
+    this.renderer.dispose();
+  }
 }

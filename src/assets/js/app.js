@@ -1,13 +1,15 @@
 import Swup from "swup";
+import SwupHeadPlugin from "@swup/head-plugin";
 import { gsap } from "gsap";
 import initThreeScene from "./main";
 
 const swup = new Swup({
   containers: ["#swup"],
   animation: { animate: false },
+  plugins: [new SwupHeadPlugin()],
 });
 
-let scene = initThreeScene();
+let scene = await initThreeScene();
 
 // 離脱: 旧コンテンツのDOMをそのままbodyに退避
 swup.hooks.on("animation:out:await", async () => {
@@ -28,11 +30,8 @@ swup.hooks.on("animation:in:await", async () => {
   const container = document.querySelector("#swup");
   const oldScene = scene;
 
-  if (document.getElementById("CanvasContainer")) {
-    scene = initThreeScene();
-  } else {
-    scene = null;
-  }
+  // initThreeScene 内でコンテナの有無を判定するため、常に呼ぶだけでOK
+  scene = await initThreeScene();
 
   const ghost = document.getElementById("swup-ghost");
 
