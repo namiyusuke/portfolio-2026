@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-const GLSL_CODE = `precision highp float;
+const CODE_SNIPPETS = [
+  `precision highp float;
 
 uniform sampler2D imageTexture;
 uniform float time;
@@ -93,21 +94,192 @@ void main() {
   uv += vec2(moveX, moveY);
 
   gl_FragColor = texture2D(imageTexture, uv);
-}`;
+}`,
+
+  `#define TOTAL_BUBBLES 110
+precision highp float;
+
+uniform sampler2D uTexture;
+uniform vec2 uResolution;
+uniform vec2 uBubblePos[TOTAL_BUBBLES];
+uniform float uBubbleR2[TOTAL_BUBBLES];
+uniform float uThreshold;
+
+varying vec2 vPx;
+
+void main() {
+  float sum = 0.0;
+  for (int i = 0; i < TOTAL_BUBBLES; i++) {
+    if (uBubbleR2[i] <= 0.0) continue;
+    vec2 d = vPx - uBubblePos[i];
+    float distSq = dot(d, d);
+    if (distSq > 0.0) {
+      float ratio = sqrt(uBubbleR2[i] / distSq);
+      sum += ratio * ratio *ratio * ratio;
+    }
+    if (sum >= uThreshold) break;
+  }
+  if (sum < uThreshold) discard;
+  // Cover mapping for square texture
+  float drawSize = max(uResolution.x, uResolution.y);
+  vec2 uv = (vPx + (vec2(drawSize) - uResolution) * 0.5) / drawSize;
+  gl_FragColor = texture2D(uTexture, uv);
+}
+
+precision highp float;
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform vec2 uResolution;
+
+attribute vec3 position;
+attribute vec2 uv;
+
+varying vec2 vPx;
+
+void main() {
+  vPx = uv * uResolution;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+
+import { Mesh } from 'three/src/objects/Mesh'
+import { PlaneGeometry } from 'three/src/geometries/PlaneGeometry'
+import { RawShaderMaterial } from 'three/src/materials/RawShaderMaterial'
+import { Vector2 } from 'three/src/math/Vector2'
+import { TextureLoader } from 'three/src/loaders/TextureLoader'
+
+import Config from '../Config'
+import vertexShader from './shader/vert.glsl'
+import fragmentShader from './shader/frag.glsl'
+
+const TOTAL_BUBBLES = 110
+
+export default class Metaball {
+  constructor() {
+    this.activeBubbles = 60
+    this.t = 0
+    this.mx = -9999
+    this.my = -9999
+    this.spawnBubbles = []
+    this.spawnMax = 10
+  }
+
+  async init() {
+    const texture = await this.createTexture()
+
+    const posVec = Array.from({ length: TOTAL_BUBBLES }, () => new Vector2())
+    const r2Arr = new Float32Array(TOTAL_BUBBLES)
+
+    const geometry = new PlaneGeometry(2, 2)
+    const material = new RawShaderMaterial({
+      uniforms: {
+        uTexture: { value: texture },
+        uResolution: { value: new Vector2(Config.width, Config.height) },
+        uBubblePos: { value: posVec },
+        uBubbleR2: { value: r2Arr },
+        uThreshold: { value: 3.5 },
+      },
+      vertexShader,
+      fragmentShader,
+      transparent: true,
+      depthTest: false,
+    })
+
+    this.mesh = new Mesh(geometry, material)
+
+    this.bubbles = Array.from({ length: TOTAL_BUBBLES }, () => ({
+      x: Math.random() * Config.width,
+      y: Math.random() * Config.height,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: (Math.random() - 0.5) * 1.5,
+      r: 28 + Math.random() * 65,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.25 + Math.random() * 0.6,
+    }))
+
+    this.initEvents()
+  }
+
+  resize() {
+    const uniforms = this.mesh.material.uniforms
+    uniforms.uResolution.value.set(Config.width, Config.height)
+    this.mesh.scale.set(Config.sceneWidth / 2, Config.sceneHeight / 2, 1)
+  }
+
+  update({ time, deltaTime }) {
+    this.t += 0.015
+    const W = Config.width
+    const H = Config.height
+    const uniforms = this.mesh.material.uniforms
+
+    for (let i = 0; i < TOTAL_BUBBLES; i++) {
+      const b = this.bubbles[i]
+      if (i < this.activeBubbles) {
+        b.vx *= 0.96
+        b.vy *= 0.96
+        b.x += b.vx + Math.sin(this.t * b.speed + b.phase) * 0.5
+        b.y += b.vy + Math.cos(this.t * b.speed * 0.8 + b.phase) * 0.5
+
+        uniforms.uBubblePos.value[i].set(b.x, b.y)
+        uniforms.uBubbleR2.value[i] = b.r * b.r
+      } else {
+        uniforms.uBubbleR2.value[i] = 0
+      }
+    }
+
+    this.mesh.material.uniformsNeedUpdate = true
+  }
+}`,
+];
 
 const KEYWORDS = new Set([
-  "precision", "highp", "mediump", "lowp", "float", "int", "bool",
-  "uniform", "varying", "attribute", "const", "void", "return",
-  "if", "else", "for", "while", "discard",
-  "vec2", "vec3", "vec4", "mat2", "mat3", "mat4",
-  "sampler2D", "samplerCube",
+  // GLSL
+  "precision",
+  "highp",
+  "mediump",
+  "lowp",
+  "float",
+  "int",
+  "bool",
+  "uniform",
+  "varying",
+  "attribute",
+  "void",
+  "discard",
+  "vec2",
+  "vec3",
+  "vec4",
+  "mat2",
+  "mat3",
+  "mat4",
+  "sampler2D",
+  "samplerCube",
+  // JS shared
+  "const",
+  "let",
+  "return",
+  "if",
+  "else",
+  "for",
+  "while",
+  "import",
+  "from",
+  "export",
+  "default",
+  "class",
+  "constructor",
+  "this",
+  "new",
+  "async",
+  "await",
+  "true",
+  "false",
 ]);
 
 export default class CodeIntro {
   constructor() {
     this.charsPerSecond = 60;
     this.fadeOutDuration = 1.0;
-
     this.progress = 0;
     this.opacity = 1;
     this.isComplete = false;
@@ -117,20 +289,30 @@ export default class CodeIntro {
     this.prevCharIndex = -1;
     this.elapsedTime = 0;
     this.fadeStartTime = 0;
-
+    this.fontLoaded = false;
     this.canvas2d = document.createElement("canvas");
     this.canvas2d.width = 1024;
     this.canvas2d.height = 768;
     this.ctx = this.canvas2d.getContext("2d");
 
-    this.lines = GLSL_CODE.split("\n");
-    this.totalChars = GLSL_CODE.length;
+    const code = CODE_SNIPPETS[Math.floor(Math.random() * CODE_SNIPPETS.length)];
+    this.lines = code.split("\n");
+    this.totalChars = code.length;
 
     this.texture = null;
     this.mesh = null;
     this.group = new THREE.Group();
 
+    this._loadFont();
     this._initMesh();
+  }
+
+  _loadFont() {
+    const font = new FontFace("HackGenConsoleNF", "url(/fonts/HackGenConsoleNF-Regular.ttf)");
+    font.load().then((loaded) => {
+      document.fonts.add(loaded);
+      this.fontLoaded = true;
+    });
   }
 
   _initMesh() {
@@ -153,7 +335,7 @@ export default class CodeIntro {
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.z = -2;
     this.mesh.position.y = 0.4;
-    this.mesh.renderOrder = -1;
+    this.mesh.renderOrder = 1;
 
     this.group.add(this.mesh);
     this._clearCanvas();
@@ -167,23 +349,43 @@ export default class CodeIntro {
     this._clearCanvas();
 
     const ctx = this.ctx;
-    const fontSize = 13;
+    const fontSize = 20;
     const lineHeight = 18;
     const paddingX = 30;
     const paddingY = 25;
 
-    ctx.font = `${fontSize}px "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace`;
+    ctx.font = `${fontSize}px "HackGenConsoleNF", monospace`;
     ctx.textBaseline = "top";
 
+    const canvasHeight = this.canvas2d.height;
     const visibleChars = this.charIndex;
+
+    // 現在の行数を数えてスクロールオフセットを計算
+    let currentLine = 0;
     let charCount = 0;
-    let y = paddingY;
+    for (let i = 0; i < this.lines.length; i++) {
+      if (charCount + this.lines[i].length < visibleChars) {
+        charCount += this.lines[i].length + 1;
+        currentLine = i + 1;
+      } else {
+        currentLine = i;
+        break;
+      }
+    }
+
+    const cursorY = paddingY + currentLine * lineHeight;
+    const scrollOffset = Math.max(0, cursorY - (canvasHeight - paddingY - lineHeight));
+
+    charCount = 0;
+    let y = paddingY - scrollOffset;
 
     for (let i = 0; i < this.lines.length; i++) {
       const line = this.lines[i];
 
       if (charCount + line.length < visibleChars) {
-        this._drawLine(ctx, line, paddingX, y);
+        if (y + lineHeight > 0 && y < canvasHeight) {
+          this._drawLine(ctx, line, paddingX, y);
+        }
         charCount += line.length + 1;
         y += lineHeight;
       } else if (charCount < visibleChars) {
@@ -247,10 +449,7 @@ export default class CodeIntro {
     this.elapsedTime += deltaTime;
 
     if (!this.isFadingOut) {
-      const newCharIndex = Math.min(
-        Math.floor(this.elapsedTime * this.charsPerSecond),
-        this.totalChars,
-      );
+      const newCharIndex = Math.min(Math.floor(this.elapsedTime * this.charsPerSecond), this.totalChars);
 
       if (newCharIndex !== this.prevCharIndex) {
         this.charIndex = newCharIndex;
@@ -262,7 +461,7 @@ export default class CodeIntro {
 
       if (this.charIndex >= this.totalChars) {
         this.isComplete = true;
-        this.isFadingOut = true;
+        this.isFadingOut = false;
         this.fadeStartTime = this.elapsedTime;
       }
     } else {

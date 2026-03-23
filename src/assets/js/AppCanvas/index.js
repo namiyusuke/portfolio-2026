@@ -2,6 +2,7 @@ import * as THREE from "three";
 import BaseCanvas from "./BaseCanvas";
 import GlbPhysicsObject from "./GlbPhysicsObject";
 import CodeIntro from "./GlbPhysicsObject/CodeIntro";
+import Metaball from "./Metaball";
 
 export default class AppCanvas extends BaseCanvas {
   constructor() {
@@ -33,10 +34,20 @@ export default class AppCanvas extends BaseCanvas {
     this.codeIntro = new CodeIntro();
     this.scene.add(this.codeIntro.group);
 
-    this.mainObject = new GlbPhysicsObject();
-    await this.mainObject.init();
-    this.mainObject.setCamera(this.camera);
-    this.scene.add(this.mainObject.group);
+    // ランダムにどちらかを選択
+    this.useMetaball = Math.random() < 0.5;
+
+    if (this.useMetaball) {
+      this.metaball = new Metaball();
+      await this.metaball.init();
+      this.scene.add(this.metaball.mesh);
+    } else {
+      this.mainObject = new GlbPhysicsObject();
+      await this.mainObject.init();
+      this.mainObject.setCamera(this.camera);
+      this.scene.add(this.mainObject.group);
+    }
+
     this.resize();
     this.isReady = true;
   }
@@ -66,24 +77,37 @@ export default class AppCanvas extends BaseCanvas {
     if (this.mainObject) {
       this.mainObject.resize();
     }
+    if (this.metaball) {
+      this.metaball.resize();
+    }
   }
 
   update({ time, deltaTime }) {
     if (!this.isReady) return;
 
-    // コードイントロの更新とボール出現制御
+    // コードイントロの更新
     if (this.codeIntro && !this.codeIntro.isDone) {
       this.codeIntro.update({ time, deltaTime });
-      this.mainObject.showBallAtProgress(this.codeIntro.progress);
+
+      if (this.mainObject) {
+        this.mainObject.showBallAtProgress(this.codeIntro.progress);
+      }
 
       if (this.codeIntro.isDone) {
-        this.mainObject.introComplete = true;
+        if (this.mainObject) {
+          this.mainObject.introComplete = true;
+        }
         this.scene.remove(this.codeIntro.group);
         this.codeIntro = null;
       }
     }
 
-    this.mainObject.update({ time, deltaTime });
+    if (this.mainObject) {
+      this.mainObject.update({ time, deltaTime });
+    }
+    if (this.metaball) {
+      this.metaball.update({ time, deltaTime });
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -94,9 +118,15 @@ export default class AppCanvas extends BaseCanvas {
       this.scene.remove(this.codeIntro.group);
       this.codeIntro = null;
     }
+    if (this.metaball) {
+      this.metaball.destroy();
+      this.scene.remove(this.metaball.mesh);
+      this.metaball = null;
+    }
     if (this.mainObject) {
       this.mainObject.destroy();
       this.scene.remove(this.mainObject.group);
+      this.mainObject = null;
     }
     if (this.lights) {
       this.lights.forEach((l) => this.scene.remove(l));
